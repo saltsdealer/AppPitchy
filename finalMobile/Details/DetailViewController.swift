@@ -108,6 +108,27 @@ class DetailViewController: UIViewController, PitchDetectorDelegate {
         detailView.clearButton.addTarget(self, action: #selector(clearFrequencies), for: .touchUpInside)
         //
         detailView.postButton.addTarget(self, action: #selector(postFunction), for: .touchUpInside)
+        
+        if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+            appDelegate.orientationLock = .portrait
+        }
+    }
+    
+    override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
+        return .portrait
+    }
+
+    override var preferredInterfaceOrientationForPresentation: UIInterfaceOrientation {
+        return .portrait
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        
+        // Reset the orientation lock to allow other orientations
+        if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+            appDelegate.orientationLock = .all // Allow all orientations
+        }
     }
     
     // MARK: - Actions
@@ -131,7 +152,7 @@ class DetailViewController: UIViewController, PitchDetectorDelegate {
     }
     
     @objc private func handleAddPost() {
-        let addPostVC = AddPostViewController(user: user,initialImage: resultImage, initialText: resMsg)
+        let addPostVC = AddPostViewController(user: user,initialImage: resultImage, initialText: resMsg.trimmingCharacters(in: .whitespacesAndNewlines))
         addPostVC.modalPresentationStyle = .pageSheet
         if let sheet = addPostVC.sheetPresentationController {
             sheet.detents = [.large()] // Pop-up style

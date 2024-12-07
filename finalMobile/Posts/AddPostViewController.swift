@@ -29,6 +29,7 @@ class AddPostViewController: UIViewController, UITextViewDelegate, PHPickerViewC
         DispatchQueue.main.async {
             self.selectedImages.append(initialImage)
             self.addPostView.textView.text = initialText
+            self.textViewDidChange(self.addPostView.textView)
             self.addPostView.imageCollectionView.reloadData()
             self.updateCollectionViewVisibility()
             self.updateButtonPosition()
@@ -50,8 +51,8 @@ class AddPostViewController: UIViewController, UITextViewDelegate, PHPickerViewC
         setupCloseButton()
         setupKeyboardDismissHandlers()
         addPostView.textView.delegate = self
-        addPostView.submitButton.isEnabled = false // Initially disabled
-        addPostView.submitButton.alpha = 0.5 
+        addPostView.submitButton.isEnabled = !selectedImages.isEmpty // Initially disabled
+        addPostView.submitButton.alpha = 0.5
         addPostView.imageCollectionView.dataSource = self
         addPostView.imageCollectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: "imageCell")
         setupActions()
@@ -291,5 +292,6 @@ class AddPostViewController: UIViewController, UITextViewDelegate, PHPickerViewC
             self?.view.layoutIfNeeded()
         }
     }
-
+    
+    
 }

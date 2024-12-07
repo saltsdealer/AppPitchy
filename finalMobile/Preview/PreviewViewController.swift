@@ -50,8 +50,19 @@ class PreviewViewController: UIViewController,  UIScrollViewDelegate {
         super.viewDidLoad()
         checkIfUserIsLoggedIn()
         setupActions()
+        if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+            appDelegate.orientationLock = .portrait
+        }
         //fetchCarouselContent()
+        //self.updateCarousel()
         view.backgroundColor = UIColor(named: "BackgroundColor")
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+
+        self.updateCarousel()
+        
     }
     
     // MARK: - Preloading Logic
@@ -69,7 +80,7 @@ class PreviewViewController: UIViewController,  UIScrollViewDelegate {
         dispatchGroup.enter()
         fetchImagesFromStorage { [weak self] in
             self?.carouselImages = $0
-            self?.updateCarousel()
+            print("loaded images: ", self?.carouselImages)
             dispatchGroup.leave()
         }
         
@@ -77,6 +88,23 @@ class PreviewViewController: UIViewController,  UIScrollViewDelegate {
         dispatchGroup.notify(queue: .main) {
             print("Preloading complete")
             completion()
+        }
+    }
+    
+    override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
+        return .portrait
+    }
+
+    override var preferredInterfaceOrientationForPresentation: UIInterfaceOrientation {
+        return .portrait
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        
+        // Reset the orientation lock to allow other orientations
+        if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+            appDelegate.orientationLock = .all // Allow all orientations
         }
     }
     
@@ -162,7 +190,10 @@ class PreviewViewController: UIViewController,  UIScrollViewDelegate {
     }
     
     private func fetchImagesFromStorage(completion: @escaping ([UIImage]) -> Void) {
+        print("Starting fetchImagesFromStorage...")
         let storageRef = storage.reference().child("preview_pics")
+        print("Storage reference created: \(storageRef)")
+        
         storageRef.listAll { result, error in
             if let error = error {
                 print("Error listing storage files: \(error)")
@@ -170,21 +201,12 @@ class PreviewViewController: UIViewController,  UIScrollViewDelegate {
                 return
             }
             
-            guard let items = result?.items else {
-                completion([UIImage(systemName: "person.fill")!, UIImage(systemName: "person.fill")!, UIImage(systemName: "person.fill")!])
-                return
-            }
-            
-            let sortedImageRefs = items.sorted { ref1, ref2 in
-                let num1 = Int(ref1.name.replacingOccurrences(of: "pic", with: "").replacingOccurrences(of: ".jpg", with: "").replacingOccurrences(of: ".png", with: "")) ?? 0
-                let num2 = Int(ref2.name.replacingOccurrences(of: "pic", with: "").replacingOccurrences(of: ".jpg", with: "").replacingOccurrences(of: ".png", with: "")) ?? 0
-                return num1 < num2
-            }
+            let items = result?.items
             
             var fetchedImages: [UIImage] = []
             let dispatchGroup = DispatchGroup()
             
-            for ref in sortedImageRefs.prefix(3) {
+            for ref in items!.prefix(3) {
                 dispatchGroup.enter()
                 ref.getData(maxSize: 10 * 1024 * 1024) { data, error in
                     if let data = data, let image = UIImage(data: data) {

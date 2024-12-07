@@ -121,11 +121,6 @@ class PreviewView: UIView {
             logoImageView.widthAnchor.constraint(equalToConstant: 100),
             logoImageView.heightAnchor.constraint(equalToConstant: 60),
             
-//            // Carousel Image View
-//            carouselImageView.centerXAnchor.constraint(equalTo: centerXAnchor),
-//            carouselImageView.topAnchor.constraint(equalTo: logoImageView.bottomAnchor, constant: 40),
-//            carouselImageView.widthAnchor.constraint(equalTo: widthAnchor, multiplier: 0.6),
-//            carouselImageView.heightAnchor.constraint(equalTo: carouselImageView.widthAnchor),
             // Carousel Scroll View
             carouselScrollView.centerXAnchor.constraint(equalTo: centerXAnchor),
             carouselScrollView.topAnchor.constraint(equalTo: logoImageView.bottomAnchor, constant: 40),
@@ -152,36 +147,34 @@ class PreviewView: UIView {
     
     // MARK: - Populate Carousel
     func populateCarousel(with images: [UIImage]) {
-        carouselScrollView.subviews.forEach { $0.removeFromSuperview() } // Clear previous content
-
-        layoutIfNeeded()
+        
+        carouselScrollView.subviews.forEach { $0.removeFromSuperview() }
+        
+        layoutIfNeeded() // Ensure layout is up-to-date
         let scrollViewWidth = carouselScrollView.frame.width
         let scrollViewHeight = carouselScrollView.frame.height
+
+        guard scrollViewWidth > 0 && scrollViewHeight > 0 else {
+            return
+        }
         
         for (index, image) in images.enumerated() {
-            // Create an image view for each image
             let imageView = UIImageView(image: image)
-            imageView.contentMode = .scaleAspectFit // Ensure the entire image is visible
-            imageView.clipsToBounds = false // Allow the image to respect aspect fit
-            
-            // Set the frame for each image view
+            imageView.contentMode = .scaleAspectFit
             imageView.frame = CGRect(
                 x: scrollViewWidth * CGFloat(index),
                 y: 0,
                 width: scrollViewWidth,
                 height: scrollViewHeight
             )
-            
-            // Add the image view to the scroll view
             carouselScrollView.addSubview(imageView)
         }
-        
-        // Update the scroll view's content size to fit all images
+
         carouselScrollView.contentSize = CGSize(
             width: scrollViewWidth * CGFloat(images.count),
             height: scrollViewHeight
         )
-
+        print("Carousel content size: \(carouselScrollView.contentSize)")
         pageControl.numberOfPages = images.count
     }
 }
