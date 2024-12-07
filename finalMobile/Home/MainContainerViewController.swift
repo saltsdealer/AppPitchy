@@ -20,7 +20,7 @@ class MainContainerViewController: UIViewController {
     private var isUserLoaded = false
     private let loadingIndicator: UIActivityIndicatorView = {
         let indicator = UIActivityIndicatorView(style: .large)
-        indicator.color = .gray
+        indicator.color = .black
         indicator.hidesWhenStopped = true
         indicator.translatesAutoresizingMaskIntoConstraints = false
         return indicator
@@ -163,14 +163,19 @@ class MainContainerViewController: UIViewController {
         
         let confirmAction = UIAlertAction(title: "Sign Out", style: .destructive) { _ in
             do {
+                self.loadingIndicator.startAnimating()
                 try Auth.auth().signOut()
                 DispatchQueue.main.async {
                     let previewVC = PreviewViewController()
-                    let navigationController = UINavigationController(rootViewController: previewVC)
-                    if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate,
-                       let window = sceneDelegate.window {
-                        window.rootViewController = navigationController
-                        window.makeKeyAndVisible()
+                    // Preload content before navigating
+                    previewVC.preloadContent {
+                        let navigationController = UINavigationController(rootViewController: previewVC)
+                        self.loadingIndicator.stopAnimating()
+                        if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate,
+                           let window = sceneDelegate.window {
+                            window.rootViewController = navigationController
+                            window.makeKeyAndVisible()
+                        }
                     }
                 }
             } catch let error {

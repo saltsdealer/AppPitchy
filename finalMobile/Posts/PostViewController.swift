@@ -101,7 +101,9 @@ class PostViewController: UIViewController, UITableViewDataSource, UITableViewDe
         
         activityIndicator.startAnimating()
         
-        postsListener = db.collection("posts").addSnapshotListener { [weak self] snapshot, error in
+        postsListener = db.collection("posts")
+            .order(by: "timestamp", descending: true)
+            .addSnapshotListener { [weak self] snapshot, error in
             guard let self = self else { return }
             self.postView.loadingIndicator.stopAnimating()
             if let error = error {

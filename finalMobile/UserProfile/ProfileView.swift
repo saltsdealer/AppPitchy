@@ -156,7 +156,7 @@ class ProfileView: UIView {
         
         // Layout subviews within contentView
         NSLayoutConstraint.activate([
-            displayNameLabel.topAnchor.constraint(equalTo: contentView.safeAreaLayoutGuide.topAnchor, constant: 20),
+            displayNameLabel.topAnchor.constraint(equalTo: contentView.safeAreaLayoutGuide.topAnchor, constant: 15),
             displayNameLabel.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
             
             profileImageView.topAnchor.constraint(equalTo: displayNameLabel.bottomAnchor, constant: 20),

@@ -9,6 +9,9 @@ import Foundation
 import UIKit
 import PhotosUI
 import TOCropViewController
+import Firebase
+import FirebaseFirestore
+import FirebaseAuth
 
 class RegisterViewController: UIViewController, UITextFieldDelegate, UIImagePickerControllerDelegate,UINavigationControllerDelegate,TOCropViewControllerDelegate {
 
@@ -185,17 +188,47 @@ class RegisterViewController: UIViewController, UITextFieldDelegate, UIImagePick
         }
         
         activityIndicator.startAnimating()
-        
-        registerUser(email: email, password: password, displayName: name, profileImage: (selectedImage)!) { result in
-            DispatchQueue.main.async {
+        // Check for unique email and displayName in Firestore
+        let db = Firestore.firestore()
+        db.collection("users").whereField("email", isEqualTo: email).getDocuments { emailQuerySnapshot, emailError in
+            guard emailError == nil else {
                 self.activityIndicator.stopAnimating()
-                switch result {
-                case .success(let message):
-                    self.showAlertWithCompletion(title: "Success", message: message) {
-                        self.redirectToHomeScreen()
+                self.showAlert(message: "Error checking email: \(emailError!.localizedDescription)")
+                return
+            }
+            
+            if let emailDocuments = emailQuerySnapshot?.documents, !emailDocuments.isEmpty {
+                self.activityIndicator.stopAnimating()
+                self.showAlert(message: "This email is already in use.")
+                return
+            }
+            
+            db.collection("users").whereField("displayName", isEqualTo: name).getDocuments { nameQuerySnapshot, nameError in
+                guard nameError == nil else {
+                    self.activityIndicator.stopAnimating()
+                    self.showAlert(message: "Error checking display name: \(nameError!.localizedDescription)")
+                    return
+                }
+                
+                if let nameDocuments = nameQuerySnapshot?.documents, !nameDocuments.isEmpty {
+                    self.activityIndicator.stopAnimating()
+                    self.showAlert(message: "This display name is already in use.")
+                    return
+                }
+                
+                // If both are unique, proceed with registration
+                self.registerUser(email: email, password: password, displayName: name, profileImage: (self.selectedImage)!) { result in
+                    DispatchQueue.main.async {
+                        self.activityIndicator.stopAnimating()
+                        switch result {
+                        case .success(let message):
+                            self.showAlertWithCompletion(title: "Success", message: message) {
+                                self.redirectToHomeScreen()
+                            }
+                        case .failure(let error):
+                            self.showAlert(title: "Registration Failed", message: error.localizedDescription)
+                        }
                     }
-                case .failure(let error):
-                    self.showAlert(title: "Registration Failed", message: error.localizedDescription)
                 }
             }
         }

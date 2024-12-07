@@ -18,6 +18,13 @@ class EditProfileViewController: UIViewController, UITextFieldDelegate, UIImageP
     private var user: User
     private var selectedImage: UIImage?
     var isEmailUpdateMode: Bool = false
+    private let loadingIndicator: UIActivityIndicatorView = {
+        let indicator = UIActivityIndicatorView(style: .large)
+        indicator.color = .black
+        indicator.hidesWhenStopped = true
+        indicator.translatesAutoresizingMaskIntoConstraints = false
+        return indicator
+    }()
     
     // MARK: - Init
     init(user: User) {
@@ -244,6 +251,11 @@ class EditProfileViewController: UIViewController, UITextFieldDelegate, UIImageP
             showError("Please enter a valid email.")
             return
         }
+        
+        if Auth.auth().currentUser?.email == editProfileView.emailTextField.text {
+            showError("Please enter a valid email.")
+            return
+        }
 
         let alertController = UIAlertController(title: "Confirm Email Change", message: "Changing your email will log you out. Do you want to proceed?", preferredStyle: .alert)
         alertController.addAction(UIAlertAction(title: "Cancel", style: .cancel))
@@ -284,7 +296,16 @@ class EditProfileViewController: UIViewController, UITextFieldDelegate, UIImageP
             textField.placeholder = "Password"
             textField.isSecureTextEntry = true
         }
-
+        let db = Firestore.firestore()
+        db.collection("users").document(self.user.uid).updateData([
+            "email": email
+        ]) { error in
+            if let error = error {
+                self.showError("Error updating user email: \(error.localizedDescription)")
+            } else {
+                print("User email successfully updated!")
+            }
+        }
         alertController.addAction(UIAlertAction(title: "Cancel", style: .cancel))
         alertController.addAction(UIAlertAction(title: "Confirm", style: .default) { _ in
             guard let password = alertController.textFields?.first?.text, !password.isEmpty else {
@@ -339,43 +360,29 @@ class EditProfileViewController: UIViewController, UITextFieldDelegate, UIImageP
         
         Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] timer in
             guard let self = self else { return }
-
+            retryCount += 1
+            if retryCount > maxRetries {
+                timer.invalidate()
+                self.hideWaitIndicator()
+                self.showError("Email verification timed out. Please try again later.")
+                
+                UIApplication.shared.endBackgroundTask(backgroundTask)
+                backgroundTask = .invalid
+                return
+            }
             Auth.auth().currentUser?.reload { error in
                 if let error = error {
                     timer.invalidate()
                     self.hideWaitIndicator()
-                    
                     // Check if the error is due to user being signed out
-                    if (error as NSError).code == AuthErrorCode.userNotFound.rawValue {
-                        self.showSuccess("Email updated successfully. Please log in again.")
-                        let db = Firestore.firestore()
-                        db.collection("users").document(self.user.uid).updateData([
-                            "email": newEmail
-                        ]) { error in
-                            if let error = error {
-                                print("Failed to update Firestore email: \(error.localizedDescription)")
-                            } else {
-                                print("Firestore email updated successfully.")
-                            }
-                        }
-                        self.logout() // Log the user out locally
-                    } else {
-                        self.showError("Failed to reload user: \(error.localizedDescription)")
-                    }
-                        
+                    self.logout() // Log the user out locally
                     UIApplication.shared.endBackgroundTask(backgroundTask)
                     backgroundTask = .invalid
                     return
+                } else {
+                    //self.showError("Failed to reload user, Please Retry some other times")
                 }
 
-                // Check if the email has been updated
-                if (Auth.auth().currentUser != nil) {
-                    timer.invalidate()
-                    self.hideWaitIndicator()
-                    self.showError("Email update fails. Please try again.")
-                    UIApplication.shared.endBackgroundTask(backgroundTask)
-                    backgroundTask = .invalid
-                }
             }
         }
     }
@@ -386,8 +393,6 @@ class EditProfileViewController: UIViewController, UITextFieldDelegate, UIImageP
             showError("User not logged in.")
             return
         }
-        
-
         
         showWaitIndicator(withMessage: "Updating profile...")
         
@@ -612,14 +617,19 @@ class EditProfileViewController: UIViewController, UITextFieldDelegate, UIImageP
         alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
             // Perform logout after user acknowledges the alert
             do {
+                self.loadingIndicator.startAnimating()
                 try Auth.auth().signOut()
                 DispatchQueue.main.async {
                     let previewVC = PreviewViewController()
-                    let navigationController = UINavigationController(rootViewController: previewVC)
-                    if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate,
-                       let window = sceneDelegate.window {
-                        window.rootViewController = navigationController
-                        window.makeKeyAndVisible()
+                    // Preload content before navigating
+                    previewVC.preloadContent {
+                        let navigationController = UINavigationController(rootViewController: previewVC)
+                        self.loadingIndicator.stopAnimating()
+                        if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate,
+                           let window = sceneDelegate.window {
+                            window.rootViewController = navigationController
+                            window.makeKeyAndVisible()
+                        }
                     }
                 }
             } catch let error {
