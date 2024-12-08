@@ -637,7 +637,7 @@ class EditProfileViewController: UIViewController, UITextFieldDelegate, UIImageP
             }
         })
         
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
         
         // Present the alert
         
